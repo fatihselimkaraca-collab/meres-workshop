@@ -69,7 +69,7 @@ async function loadTeacherDropdown(selectId) {
   const select = document.getElementById(selectId);
   if (!select) return;
 
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from('teachers')
     .select('id, name')
     .order('name');
@@ -109,7 +109,7 @@ async function addTeacherInline() {
   const name = input.value.trim();
   if (!name) return;
 
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from('teachers')
     .insert({ name })
     .select()
@@ -138,7 +138,7 @@ async function loadLessons() {
   const empty = document.getElementById('empty-state');
 
   // Fetch lessons with teacher info
-  const { data: lessons, error } = await supabase
+  const { data: lessons, error } = await db
     .from('lessons')
     .select(`
       id, name, type, date, time, capacity, price,
@@ -154,7 +154,7 @@ async function loadLessons() {
   }
 
   // Fetch enrollment counts per lesson
-  const { data: enrollments } = await supabase
+  const { data: enrollments } = await db
     .from('enrollments')
     .select('lesson_id, payment_status');
 
@@ -275,7 +275,7 @@ async function createLesson() {
     return;
   }
 
-  const { error } = await supabase
+  const { error } = await db
     .from('lessons')
     .insert({
       name,
@@ -303,7 +303,7 @@ async function createLesson() {
 // ============================================
 
 async function loadStudentCache() {
-  const { data } = await supabase
+  const { data } = await db
     .from('students')
     .select('id, name, phone')
     .order('name');
@@ -365,7 +365,7 @@ function selectStudent(id, name, phone) {
 async function loadLessonDropdown() {
   const select = document.getElementById('enroll-lesson');
 
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from('lessons')
     .select('id, name, date, time')
     .order('date', { ascending: true });
@@ -409,7 +409,7 @@ async function enrollStudent() {
   // If no existing student selected, find or create
   if (!studentId) {
     // Check if student exists by name
-    const { data: existing } = await supabase
+    const { data: existing } = await db
       .from('students')
       .select('id')
       .ilike('name', name)
@@ -420,7 +420,7 @@ async function enrollStudent() {
       studentId = existing.id;
     } else {
       // Create new student
-      const { data: newStudent, error: studentErr } = await supabase
+      const { data: newStudent, error: studentErr } = await db
         .from('students')
         .insert({ name, phone: phone || null })
         .select()
@@ -435,7 +435,7 @@ async function enrollStudent() {
   } else {
     // Update phone if changed
     if (phone) {
-      await supabase
+      await db
         .from('students')
         .update({ phone })
         .eq('id', studentId);
@@ -443,7 +443,7 @@ async function enrollStudent() {
   }
 
   // Create enrollment
-  const { error: enrollErr } = await supabase
+  const { error: enrollErr } = await db
     .from('enrollments')
     .insert({
       lesson_id: lessonId,
@@ -481,7 +481,7 @@ async function openLessonDetail(lessonId) {
   currentLessonId = lessonId;
 
   // Fetch lesson
-  const { data: lesson, error: lessonErr } = await supabase
+  const { data: lesson, error: lessonErr } = await db
     .from('lessons')
     .select('*, teachers ( name )')
     .eq('id', lessonId)
@@ -498,7 +498,7 @@ async function openLessonDetail(lessonId) {
     `${formatDate(lesson.date)} ${lesson.time} · ${lesson.teachers?.name || '—'} · ${lesson.price}₺`;
 
   // Fetch enrollments with student info
-  const { data: enrollments } = await supabase
+  const { data: enrollments } = await db
     .from('enrollments')
     .select('*, students ( id, name, phone )')
     .eq('lesson_id', lessonId)
@@ -586,13 +586,13 @@ async function deleteCurrentLesson() {
   if (!confirm('Bu dersi silmek istediğinize emin misiniz? Tüm kayıtlar da silinecek.')) return;
 
   // Delete enrollments first
-  await supabase
+  await db
     .from('enrollments')
     .delete()
     .eq('lesson_id', currentLessonId);
 
   // Delete lesson
-  const { error } = await supabase
+  const { error } = await db
     .from('lessons')
     .delete()
     .eq('id', currentLessonId);
@@ -642,7 +642,7 @@ async function saveEnrollmentEdit() {
   const paidAmount = parseFloat(document.getElementById('edit-paid-amount').value) || 0;
   const note = document.getElementById('edit-note').value.trim();
 
-  const { error } = await supabase
+  const { error } = await db
     .from('enrollments')
     .update({
       payment_status: paymentStatus,
@@ -664,7 +664,7 @@ async function saveEnrollmentEdit() {
 async function removeEnrollment() {
   if (!confirm('Bu öğrenci kaydını silmek istediğinize emin misiniz?')) return;
 
-  const { error } = await supabase
+  const { error } = await db
     .from('enrollments')
     .delete()
     .eq('id', editingEnrollmentId);
